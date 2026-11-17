@@ -8,7 +8,7 @@ Icon set, app icon template, screenshot template, colour and type rules, and the
 
 Keeps 24 repositories looking like one suite instead of 24 unrelated projects.
 
-Part of the [Nijatva](https://vasudev-work.github.io) suite by **DEVIRA**.
+Part of the [Nijatva](https://nijatva.github.io) suite.
 
 ## Status
 
