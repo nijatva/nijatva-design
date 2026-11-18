@@ -1,6 +1,7 @@
 # nijatva-design
 
-The icons and templates that keep thirty apps looking like one suite.
+The icons that keep twenty-eight apps looking like one suite. Thirty sets live
+here: one per app, plus the two store icons.
 
 ## What is here
 
