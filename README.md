@@ -1,6 +1,6 @@
 # nijatva-design
 
-The icons that keep twenty-eight apps looking like one suite. Thirty sets live
+The icons that keep twenty-nine apps looking like one suite. Thirty-one sets live
 here: one per app, plus the two store icons.
 
 ## What is here
@@ -14,7 +14,7 @@ icons/<app>/res/mipmap-anydpi-v26/ic_launcher.xml     adaptive-icon wiring
 icons/<app>/res/mipmap-anydpi-v26/ic_launcher_round.xml
 ```
 
-Thirty apps: the twenty-four in the suite, plus Appstore, Photos, Video Player,
+Thirty-one sets: the twenty-five in the suite, plus Appstore, Photos, Video Player,
 Browser Mini X, Photo Editor and Web Store.
 
 ## Using one in an app
