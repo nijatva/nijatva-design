@@ -57,6 +57,21 @@ The sources come from the website's icon set (`nijatva/nijatva.github.io`,
 `assets/icons/`). The converter lives with the site; ask there rather than
 hand-editing the vectors here.
 
+## Wording and strings
+
+`wording.md` is the voice guide: how Nijatva writes, which word to use for what,
+and the states everyone forgets. Read it before adding a string anywhere.
+
+`strings/common-en.xml` and `strings/common-hi.xml` hold the strings every app
+shares — Cancel, Delete, Settings, the theme names, the empty and error defaults.
+Keys are prefixed `nj_` so they cannot clash with an app's own.
+
+Both files carry the same keys, and Hindi is expected to be complete for every
+key, not partial. To use them today, copy them into an app's `res/values/` and
+`res/values-hi/`. They belong in `nijatva-core` as library resources so apps
+inherit them by depending on it; until that module exists, copying is the honest
+interim and the two files here stay the source of truth.
+
 ## Licence
 
 Apache-2.0 for the code. The name "Nijatva" and these icons are not covered by
