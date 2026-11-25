@@ -1,0 +1,4 @@
+# Development and CI dependencies for the validation scripts.
+# Pinned: check_icons.py depends on svgpathtools path parsing; an unpinned
+# version once broke CI because the dependency was not installed at all.
+svgpathtools==1.8.0
