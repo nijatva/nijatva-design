@@ -1,8 +1,8 @@
 name: validate
 
 # nijatva-design has no app code, so nothing here builds an APK.
-# This workflow only answers one question: are the sources and the generated
-# files still telling the same story?
+# This workflow answers one question: are the sources, the generated files and
+# the catalog still telling the same story?
 
 on:
   push:
@@ -22,17 +22,36 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+
+      - name: Install validation dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Dependencies import
+        run: python -c "import svgpathtools; print('svgpathtools ok')"
 
       - name: Generated token resources are not stale
         run: python3 scripts/gen_tokens.py --check
 
-      - name: Every icon set is complete and on-palette
+      - name: Every icon set is complete, on-palette and inside the safe circle
         run: python3 scripts/check_icons.py
+
+      - name: Icon visual weight report
+        run: python3 scripts/check_icons.py --weight
 
       - name: Shared strings have identical keys in every language
         run: python3 scripts/check_strings.py
 
-      - name: No binaries committed
+      - name: Catalog is not stale
+        run: |
+          python3 scripts/gen_catalog.py
+          if ! git diff --quiet -- catalog.html; then
+            echo "::error::catalog.html is stale — run scripts/gen_catalog.py and commit the result"
+            git diff --stat -- catalog.html
+            exit 1
+          fi
+
+      - name: No binaries or PNGs committed
         run: |
           if git ls-files | grep -Ei '\.(aar|apk|jar|jks|keystore|png)$'; then
             echo "::error::binary or PNG committed; adaptive icons only, no densities"
