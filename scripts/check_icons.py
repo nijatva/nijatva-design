@@ -9,6 +9,10 @@ For each set:
   4. the tile colour is one of the eight suite colours
   5. white-on-tile contrast is at least 3:1 (WCAG non-text minimum)
 
+With --weight it also reports ink coverage per set: stroke length x stroke width
+divided by the glyph bounding box. Boundary radius alone hides visual weight —
+two icons can sit inside the same safe circle and still read 2x heavier.
+
 Needs: pip install svgpathtools
 
 Usage: python3 scripts/check_icons.py [--quiet]
@@ -133,11 +137,92 @@ def check_set(folder: Path):
     return problems, info
 
 
+def ink_coverage(svg: str):
+    """Stroke ink area / glyph bbox area, in percent. A rough but honest proxy
+    for visual weight: it counts how much of the glyph box the ink fills."""
+    sw = float(m.group(1)) if (m := re.search(r'stroke-width="([\d.]+)"', svg)) else 0.0
+    length = 0.0
+    xs, ys = [], []
+    for d in re.findall(r'\sd="([^"]+)"', svg):
+        path = parse_path(d)
+        length += path.length()
+        for seg in path:
+            for i in range(33):
+                pt = seg.point(i / 32)
+                xs.append(pt.real)
+                ys.append(pt.imag)
+    for tag in re.findall(r"<rect[^>]*>", svg):
+        if 'width="96"' in tag and 'height="96"' in tag:
+            continue
+        num = lambda k, dflt=0.0: float(m.group(1)) if (m := re.search(rf'\b{k}="([-\d.]+)"', tag)) else dflt
+        x, y, w, h, rx = num("x"), num("y"), num("width"), num("height"), num("rx")
+        if rx:
+            d = (f"M{x+rx},{y} h{w-2*rx} a{rx},{rx} 0 0 1 {rx},{rx} v{h-2*rx} "
+                 f"a{rx},{rx} 0 0 1 {-rx},{rx} h{-(w-2*rx)} a{rx},{rx} 0 0 1 {-rx},{-rx} "
+                 f"v{-(h-2*rx)} a{rx},{rx} 0 0 1 {rx},{-rx} z")
+        else:
+            d = f"M{x},{y} h{w} v{h} h{-w} z"
+        path = parse_path(d)
+        length += path.length()
+        for seg in path:
+            for i in range(17):
+                pt = seg.point(i / 16)
+                xs.append(pt.real)
+                ys.append(pt.imag)
+    for tag in re.findall(r"<circle[^>]*>", svg):
+        cx, cy, r = (float(re.search(rf'\b{k}="([-\d.]+)"', tag).group(1)) for k in ("cx", "cy", "r"))
+        length += 2 * math.pi * r
+        xs += [cx - r, cx + r]
+        ys += [cy - r, cy + r]
+    if not xs:
+        return None
+    w = (max(xs) - min(xs)) + sw
+    h = (max(ys) - min(ys)) + sw
+    if w <= 0 or h <= 0:
+        return None
+    return 100.0 * (length * sw) / (w * h)
+
+
+def report_weight(sets) -> int:
+    """Report ink coverage across all sets. Report-only by default: a heavy icon
+    is a design judgement, not a build failure. --strict-weight makes it fail."""
+    rows = []
+    for folder in sets:
+        svg_file = folder / "icon.svg"
+        if not svg_file.exists():
+            continue
+        cov = ink_coverage(svg_file.read_text())
+        if cov is not None:
+            rows.append((folder.name, round(cov, 1)))
+    if not rows:
+        print("no measurable glyphs", file=sys.stderr)
+        return 1
+    values = sorted(v for _, v in rows)
+    median = values[len(values) // 2]
+    lo, hi = median * 0.65, median * 1.35
+    print(f"\nink coverage (stroke ink / glyph box), {len(rows)} sets")
+    print(f"{'set':15s}{'coverage':>9s}   verdict")
+    outliers = 0
+    for name, cov in sorted(rows, key=lambda r: -r[1]):
+        if cov > hi:
+            verdict, outliers = "heavy (outside band)", outliers + 1
+        elif cov < lo:
+            verdict, outliers = "light (outside band)", outliers + 1
+        else:
+            verdict = "in band"
+        print(f"{name:15s}{cov:>8}%   {verdict}")
+    print(f"\nmin {values[0]}% · median {median}% · max {values[-1]}% · "
+          f"spread {values[-1] / values[0]:.2f}x")
+    print(f"band {lo:.1f}%–{hi:.1f}% (±35% of median) · {outliers} outliers")
+    print("Report-only: change an icon only after looking at it. Never auto-nudge.")
+    return 1 if ("--strict-weight" in sys.argv and outliers) else 0
+
+
 def main() -> int:
     if not ICONS.is_dir():
         print("no icons/ directory", file=sys.stderr)
         return 2
-    quiet = "--quiet" in sys.argv
+    quiet = "--quiet" in sys.argv or "--weight" in sys.argv
     sets = sorted(p for p in ICONS.iterdir() if p.is_dir())
     failures, radii = 0, []
     for folder in sets:
@@ -157,6 +242,10 @@ def main() -> int:
         print(f"\nradius {min(radii)}–{max(radii)}dp (limit 33.0), "
               f"median {sorted(radii)[len(radii) // 2]}, spread {max(radii) / min(radii):.2f}x")
     print(f"{len(sets)} sets checked, {len(sets) - failures} clean, {failures} with problems")
+    if "--weight" in sys.argv:
+        weight_fail = report_weight(sets)
+        if weight_fail:
+            return weight_fail
     return 1 if failures else 0
 
 
