@@ -1,0 +1,40 @@
+name: validate
+
+# nijatva-design has no app code, so nothing here builds an APK.
+# This workflow only answers one question: are the sources and the generated
+# files still telling the same story?
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generated token resources are not stale
+        run: python3 scripts/gen_tokens.py --check
+
+      - name: Every icon set is complete and on-palette
+        run: python3 scripts/check_icons.py
+
+      - name: Shared strings have identical keys in every language
+        run: python3 scripts/check_strings.py
+
+      - name: No binaries committed
+        run: |
+          if git ls-files | grep -Ei '\.(aar|apk|jar|jks|keystore|png)$'; then
+            echo "::error::binary or PNG committed; adaptive icons only, no densities"
+            exit 1
+          fi
